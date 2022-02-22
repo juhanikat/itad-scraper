@@ -1,58 +1,34 @@
-# WORK IN PROGRESS
-
 import bs4
 import requests
 
 
-def html_class_filter(html_class: str, list: list):
-    new_list = []
-    list = str(list)
-    soup = bs4.BeautifulSoup(list, 'html.parser')
-    for tag in soup.find_all():
-        if html_class in str(tag.get('class')):
-            new_list.append(tag)
-    return new_list
-
-
 while True:
-    print('')
-    print('Search for a game. Input "q" to exit.')
-    syote = input()
-    if syote.lower() == 'q':
+    syote = input('Search for a game. Input "Q" to quit. ')
+    if syote.upper() == 'Q':
         break
 
-    res = requests.get(f'https://isthereanydeal.com/search/?q={syote}', timeout=10)
+    res = requests.get(
+        f'https://isthereanydeal.com/search/?q={syote}', timeout=10)
     res.raise_for_status()
 
-    my_soup = bs4.BeautifulSoup(res.text, 'html.parser')
-    selection = my_soup.find_all()
+    soup = bs4.BeautifulSoup(res.text, 'html.parser')
+    card = soup.find('div', {'class': "card-container"})
 
-    game_not_found = html_class_filter('widget__nodata', selection)
-    if game_not_found:
+    if not card:
+        print()
         print('Game not found. Check your input for typos.')
+        print()
         continue
 
-    game_title = None
-    price_tags = None
-    stores = None
-
-    selection = my_soup.select('div')
-    cards = html_class_filter('card-container', selection)
-    for card in cards:
-        price_tags = html_class_filter('numtag__primary', card)
-        if not price_tags:
-            continue
-        game_title = html_class_filter('card__title', card)[0].text
-        stores = html_class_filter('shopTitle', card)
-        break
-
-    if not price_tags or not stores or not game_title:
+    game_title = card.find('a', {'class': "card__title"}).text
+    price_tags = card.find_all('div', {'class': "numtag__primary"})
+    stores = card.find_all('span', {'class': "shopTitle"})
+    if not game_title or not price_tags or not stores:
         print('Error, please try again.')
         continue
 
     historical_low = price_tags[0].text
     historical_low_store = stores[0].text
-
     current_best = ''
     current_best_store = ''
     if len(price_tags) > 1:
